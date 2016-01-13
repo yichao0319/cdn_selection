@@ -1,0 +1,48 @@
+###########################
+## Tasks
+###########################
+1. hostname_search
+  - search_google.py
+    Use Google Search API to crawl web site hostnames
+  - parse_links.py
+    Crawl the "herf" in html to get web site hostnames
+  - find_cname.py
+    Send hostnames to a DNS to get CNAMEs and Authoritative DNSes
+
+2. dns_cname_search
+  - dns_cname_search.py
+    Send hostnames to a DNS to get CNAMEs and Authoritative DNSes
+
+3. dns_validate
+  - dns_validate.py
+    Send trial DNS queries to Authoritative DNSes to find "open" DNSes (actually misconfigured DNSes)
+
+4. ip_search
+  - ip_search.py
+    Send CNAMEs to open DNSes to get IPs
+
+5. ip_geolocate
+  - [obsolete]ip_geolocate.py
+    Use local IP Geolocation databse to find location of IPs
+  - ipinfo.py
+    Use online IP Geolocation database "ipinfo.io" to find the location of IPs. The Code only retrieve required IPs' geolocation and store locally as a local database. The local database is then used by ip_geolocate_ipinfo.py
+  - ip_geolocate_ipinfo.py
+    Use above databse to find location of IPs
+
+6. cdn_collection_analyze
+  - [obsolete] cdn_collection_analyze.py
+  - cdn_collection_analyze_ipinfo.py
+    Analyze the collected data
+
+
+###########################
+## useful comments
+###########################
+ssh -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa cuhk_cse_02@planetlab1.ie.cuhk.edu.hk "cd cdn_selection/git_repository/hostname_search; nohup python search_google.py 0 0 &> tmp.nohup.search_google.out &"
+
+scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r search_google.py cuhk_cse_02@planetlab1.ie.cuhk.edu.hk:~/cdn_selection/git_repository/hostname_search/
+
+ssh -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa cuhk_cse_02@ple2.hpca.ual.es
+
+python vxargs.py -a ../../data/ip_search/plnode/nodes-current-deploy.txt -o ../../data/hostname_search/tmp_deploy/ -t 2000 ssh -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa cuhk_cse_02@{} "killall -s SIGTERM python"
+
