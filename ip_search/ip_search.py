@@ -54,6 +54,23 @@ wait_time = 10
 ips = {}
 
 
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
+
 def merge_ips(ips1, ips2):
   for cname in ips2:
     if cname in ips1:
@@ -116,7 +133,7 @@ def send_query_to_ns(hostname, nameserver):
       for rr in rrset:
         if rr.rdtype == dns.rdatatype.A:
           if DEBUG4: print "  Name = %s" % (rr.address)
-          
+
           ret.add(rr.address)
 
         elif rr.rdtype == dns.rdatatype.CNAME:
@@ -160,6 +177,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 os.system("rm %s" % (DONE_IND_FILE))
 os.system("rm %s" % (KILLED_IND_FILE))
 os.system("touch %s" % (RUNNING_IND_FILE))
@@ -170,7 +188,7 @@ os.system("touch %s" % (RUNNING_IND_FILE))
 ###################
 if DEBUG2: print "Read Data"
 
-if os.path.exists(PARAM_FILE_CNAME): 
+if os.path.exists(PARAM_FILE_CNAME):
   cnames = list_data.load_data(PARAM_FILE_CNAME)
 else:
   cnames = list_data.load_data(cname_dir + cname_filename)
@@ -245,12 +263,12 @@ for cname in cnames:
         tmp = {cname: {auth: this_ips} }
         ips = merge_ips(ips, tmp)
 
-      
+
 
     if cnt % 100 == 0:
       store_output_files()
 
-  store_output_files()    
+  store_output_files()
 
 # exit();
 

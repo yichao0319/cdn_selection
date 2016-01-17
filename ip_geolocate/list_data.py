@@ -1,11 +1,9 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 #import json, urllib, urllib2
 import sys, os, time
 import gzip
-
-# FILE_FRIENDSHIP = "../DATA/USER_FRIENDSHIP"
-# FILE_START_POOL = "../DATA/LOC_START_POOL"
-# FILE_LOC_LANG = '../DATA/LOC_LANGUAGE'
-# FILE_USER_LANG = '../DATA/USER_LANGUAGE'
 
 
 def load_data(filename):
@@ -15,19 +13,19 @@ def load_data(filename):
       f = gzip.open(filename, 'rb')
     else:
       f = open(filename, 'r')
-    
+
     print "  load data: " + filename
     tmp = f.read()
     list_data = tmp.split('\n')
     # print "    "+"\n    ".join(list_data)
     f.close()
-    
+
   except IOError:
-    # print IOError 
-    print "  file not exist: " + filename 
+    # print IOError
+    print "  file not exist: " + filename
   except:
     print "  cannot load " + filename
-    pass    
+    pass
 
   return list_data
 
@@ -35,10 +33,14 @@ def load_data(filename):
 def store_data(filename, list_data):
   try:
     print '  store data: ' + filename
+    list_data = sorted(list_data)
     f = open(filename, 'w+')
-    f.write("\n".join(sorted(list_data)))
+    for item in list_data:
+      if item == "": continue
+      if item is None: continue
+      f.write(item.encode('utf-8').strip() + "\n")
     f.close()
   except Exception as e:
-    print "  list_data -- cannot store it! type: %s, msg: %s" % (type(e), e)
+    print "  cannot store it! type: %s, msg: %s" % (type(e), e)
     pass
 

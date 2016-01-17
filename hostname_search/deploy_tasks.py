@@ -12,17 +12,19 @@ DEBUG3 = 1
 ###################
 ## Variables
 ###################
-input_dir  = '../../data/hostname_search/plnode/'
-output_dir = '../../data/hostname_search/tmp_deploy/'
+username = 'cuhk_cse_02'
+projname = 'cdn_selection'
+taskname = 'hostname_search'
+dirname  = 'hostname'
+
+input_dir  = '../../data/' + taskname + '/plnode/'
+output_dir = '../../data/' + taskname + '/tmp_deploy/'
 node_filename = 'nodes-current.txt'
 deploy_node_filename = 'nodes-current-deploy.txt'
 abnormal_filename = 'abnormal_list'
 killed_filename   = 'killed_list'
 
 
-username = 'cuhk_cse_02'
-projname = 'cdn_selection'
-taskname = 'hostname_search'
 
 
 ###################
@@ -36,7 +38,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Make Directory for Data"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 10 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"mkdir -p ~/%s/data/%s/hostname; mkdir -p ~/%s/data/%s/plnode; mkdir -p ~/%s/git_repository/%s\"" % (input_dir, deploy_node_filename, output_dir, username, projname, taskname, projname, taskname, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t 30 -P 100 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"mkdir -p ~/%s/data/%s/%s; mkdir -p ~/%s/data/%s/plnode;\"" % (input_dir, deploy_node_filename, output_dir, username, projname, taskname, dirname, projname, taskname))
 
 
 ###################
@@ -62,7 +64,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Delete Old Codes"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 30 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"rm -rf ~/%s/git_repository/%s\"" % (input_dir, deploy_node_filename, output_dir, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t 30 -P 100 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"rm -rf ~/%s/git_repository/%s\"" % (input_dir, deploy_node_filename, output_dir, username, projname, taskname))
 
 
 ###################
@@ -72,7 +74,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Copy New Codes"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 30 scp -oBatchMode=yes -i ~/.ssh/planetlab_rsa -r ../%s %s@{}:~/%s/git_repository/%s" % (input_dir, deploy_node_filename, output_dir, taskname, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t 30 -P 100 scp -oBatchMode=yes -i ~/.ssh/planetlab_rsa -r ../%s %s@{}:~/%s/git_repository/%s" % (input_dir, deploy_node_filename, output_dir, taskname, username, projname, taskname))
 
 
 ###################

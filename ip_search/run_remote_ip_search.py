@@ -1,5 +1,7 @@
 #!/usr/bin/python
-import sys, os, math, re, fnmatch, signal, time
+# -*- coding: utf-8 -*-
+
+import sys, os, math, re, fnmatch, signal, time, locale
 import list_data
 import data
 
@@ -43,9 +45,25 @@ dns_filename     = 'valid_auth_dns.txt'
 IF_DATA_READ = 0
 
 time_cnt = 0
-wait_time = 10
+wait_time = 30
 
 ips = {}
+
+
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
 
 
 def merge_ips(ips1, ips2):
@@ -107,7 +125,7 @@ def send_query_to_ns(hostname, nameserver):
       for rr in rrset:
         if rr.rdtype == dns.rdatatype.A:
           if DEBUG4: print "  Name = %s" % (rr.address)
-          
+
           ret.add(rr.address)
 
         elif rr.rdtype == dns.rdatatype.CNAME:
@@ -129,16 +147,21 @@ def send_query_to_ns(hostname, nameserver):
 ###################
 ## Main
 ###################
+force_utf8_hack()
 
 ###################
 ## get PlanetLab nodes states
 ###################
 if DEBUG2: print "Get PlanetLab Nodes"
 
-if os.path.exists(plnode_dir + ready_node_filename): 
+if os.path.exists(plnode_dir + ready_node_filename):
   filename = plnode_dir + ready_node_filename
 else:
   filename = plnode_dir + deploy_node_filename
+
+#######
+# filename = plnode_dir + deploy_node_filename
+#######
 
 nodes = list_data.load_data(filename)
 
@@ -150,8 +173,8 @@ if DEBUG2: print "Read Data"
 
 ###################################################
 ## only CDN:
-# os.system("cat " + cname_dir + cname_filename + " | grep \"cdn\|chinacache\|ccgslb\" > tmp.cdn_list.txt")
-os.system("cat " + cname_dir + cname_filename + " | grep \"aka\|chinacache\|ccgslb\" > tmp.cdn_list.txt")
+os.system("cat " + cname_dir + cname_filename + " | grep \"cdn\|chinacache\|ccgslb\" > tmp.cdn_list.txt")
+# os.system("cat " + cname_dir + cname_filename + " | grep \"aka\|chinacache\|ccgslb\" > tmp.cdn_list.txt")
 cnames = list_data.load_data("tmp.cdn_list.txt")
 os.system("rm tmp.cdn_list.txt")
 
@@ -202,7 +225,7 @@ if DEBUG2: print "Generate Parameter Files"
 
 # nodes = ["planetlab1.ie.cuhk.edu.hk"]
 
-## assigned DNS 
+## assigned DNS
 list_data.store_data(PARAM_FILE_AUTH, auths)
 
 ## assigned CNAME
@@ -217,8 +240,8 @@ for ni in xrange(0,len(nodes)):
     # break;
     std = int(std - len(cnames))
     end = int( min(std+njobs-1, len(cnames)-1) )
-  
-  
+
+
   ## Write parameter file
   if DEBUG3: print("  Write parameter file")
   fp = open(PARAM_FILE_CNAME + "." + node, 'w')

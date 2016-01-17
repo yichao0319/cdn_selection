@@ -22,7 +22,7 @@
     Send CNAMEs to open DNSes to get IPs
 
 5. ip_geolocate
-  - [obsolete]ip_geolocate.py
+  - [obsolete] ip_geolocate.py
     Use local IP Geolocation databse to find location of IPs
   - ipinfo.py
     Use online IP Geolocation database "ipinfo.io" to find the location of IPs. The Code only retrieve required IPs' geolocation and store locally as a local database. The local database is then used by ip_geolocate_ipinfo.py

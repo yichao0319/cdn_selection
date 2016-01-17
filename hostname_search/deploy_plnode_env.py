@@ -29,6 +29,13 @@ taskname = 'hostname_search'
 ## Main
 ###################
 
+if os.path.exists(input_dir + deploy_node_filename):
+  init_node_filename = deploy_node_filename
+else:
+  init_node_filename = node_filename
+init_node_filename = node_filename
+
+
 ###################
 ## check PlanetLab nodes states
 ###################
@@ -36,7 +43,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Check PlanetLab Node states"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 5 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"hostname\"" % (input_dir, node_filename, output_dir, username))
+os.system("python vxargs.py -a %s%s -o %s -t 5 -P 100 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"hostname\"" % (input_dir, init_node_filename, output_dir, username))
 
 
 
@@ -49,7 +56,7 @@ if DEBUG2: print "Find Alive Nodes"
 dead_nodes = set(load_data(output_dir + abnormal_filename))
 dead_nodes |= set(load_data(output_dir + killed_filename))
 print str(dead_nodes)
-current_nodes = set(load_data(input_dir + node_filename))
+current_nodes = set(load_data(input_dir + init_node_filename))
 print str(current_nodes)
 remain_nodes = list(current_nodes - dead_nodes)
 print str(remain_nodes)
@@ -63,7 +70,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Install Python 2.7"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 2000 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"if [ -a Python-2.7.10 ] ; then exit; fi; sudo yum -y --nogpgcheck groupinstall 'Development tools'; sudo yum -y --nogpgcheck install zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel; mkdir ~/python; wget --no-check-certificate https://www.python.org/ftp/python/2.7.10/Python-2.7.10.tgz; tar zxfv Python-2.7.10.tgz; rm Python-2.7.10.tgz; find ~/python -type d | xargs chmod 0755; cd Python-2.7.10; ./configure --prefix=/home/%s/python; make; sudo make install; echo 'export PATH=/home/%s/python/bin/:\$PATH' >> ~/.bashrc; source ~/.bashrc; wget --no-check-certificate  https://bootstrap.pypa.io/get-pip.py; sudo python get-pip.py; cd ..; sudo python -m pip install google\"" % (input_dir, deploy_node_filename, output_dir, username, username, username))
+os.system("python vxargs.py -a %s%s -o %s -t 2000 -P 100 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"if [ -a Python-2.7.10 ] ; then exit; fi; sudo yum -y --nogpgcheck groupinstall 'Development tools'; sudo yum -y --nogpgcheck install zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel; mkdir ~/python; wget --no-check-certificate https://www.python.org/ftp/python/2.7.10/Python-2.7.10.tgz; tar zxfv Python-2.7.10.tgz; rm Python-2.7.10.tgz; find ~/python -type d | xargs chmod 0755; cd Python-2.7.10; ./configure --prefix=/home/%s/python; make; sudo make install; echo 'export PATH=/home/%s/python/bin/:\$PATH' >> ~/.bashrc; source ~/.bashrc; wget --no-check-certificate  https://bootstrap.pypa.io/get-pip.py; sudo python get-pip.py; cd ..; sudo python -m pip install google\"" % (input_dir, deploy_node_filename, output_dir, username, username, username))
 
 
 ###################

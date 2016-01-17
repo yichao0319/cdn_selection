@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys, os, signal, random, re, fnmatch, np
+import sys, os, signal, random, re, fnmatch
 import time, locale, datetime, requests
-import socket, urllib2, httplib
+import socket
 import dns, dns.name, dns.query, dns.resolver, dns.exception
 import list_data
 import data
+# import np
 from bs4 import BeautifulSoup
 from urlparse import urlparse
 
@@ -45,22 +46,49 @@ time_cnt = 0
 wait_time = 60
 
 hostnames = set()
-url_pool  = {} 
+url_pool  = {}
 
+
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
 
 def add_to_hostnames(url):
   parsed_url = urlparse(url)
   hostname = parsed_url.hostname
   if hostname is not None:
-    hostnames.add(hostname)
-  
+    hostname = hostname.encode('utf-8').strip()
+    m = re.search("^[\w\d]+", hostname)
+    if m is not None:
+      hostnames.add(hostname)
 
-def add_to_pool(url):
+
+def add_to_pool(url, num):
+  if num > 100000:
+    return 0
+
+  ignore_types = ["jpg", "png", "ipa", "apk", "zip", "rar"]
+  for ignore_type in ignore_types:
+    m = re.search("%s$" % (ignore_type), url)
+    if m is not None:
+      return 0
+
   parsed_url = urlparse(url)
   hostname = parsed_url.hostname
-  if hostname is None: 
+  if hostname is None:
     return 0
-  
+
   if hostname in url_pool:
     if url in url_pool[hostname]:
       cnt = 0
@@ -100,6 +128,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 os.system("rm %s" % (DONE_IND_FILE))
 os.system("rm %s" % (KILLED_IND_FILE))
 os.system("touch %s" % (RUNNING_IND_FILE))
@@ -122,14 +151,14 @@ if DEBUG3: print "  #hostnames: %d" % (len(hostnames))
 if DEBUG2: print "Read Entrance Web Sites"
 
 if os.path.exists(PARAM_FILE):
-  entrances = list_data.load_data(hosts_dir + entrance_filename)
+  entrances = list_data.load_data(PARAM_FILE)
 else:
   entrances = list_data.load_data(hosts_dir + entrance_filename)
 if DEBUG3: print "  #entrances: %d" % (len(entrances))
 
 num = 0
 for entrance in entrances:
-  cnt = add_to_pool(entrance)
+  cnt = add_to_pool(entrance, num)
   num += cnt
 
 
@@ -157,7 +186,7 @@ while num > 0:
   if DEBUG3: print "  %d: %s" % (cnt_url, this_url)
 
 
-  ## Get HTML content 
+  ## Download HTML content
   ## (there some well-known problem of getting url in python, so I use curl instead)
   tmp_filename = "tmp.%f.txt" % (random.random())
   try:
@@ -167,6 +196,7 @@ while num > 0:
     # input('wait....')
     continue
 
+  ## Read Downloaded HTML file
   if os.path.exists(tmp_filename):
     fh = open(tmp_filename, 'r')
     html = fh.read()
@@ -175,29 +205,41 @@ while num > 0:
   else:
     continue
 
+
   ## Parse the web and get urls
-  soup = BeautifulSoup(html, 'html.parser')
-  # print(soup.prettify())
-  for link in soup.find_all('a'):
-    name = link.get('href')
-    if name is None: continue
-    m = re.search("http", name)
-    if m is None: continue
+  try:
+    soup = BeautifulSoup(html, 'html.parser')
+    # print(soup.prettify())
+    for link in soup.find_all('a'):
+      name = link.get('href')
+      if name is None: continue
+      m = re.search("http", name)
+      if m is None: continue
 
-    cnt = add_to_pool(name)
-    num += cnt
+      cnt = add_to_pool(name, num)
+      num += cnt
 
-    add_to_hostnames(name)
-  
+      add_to_hostnames(name)
+  except Exception as e:
+    print "  [2] type: %s, msg: %s" % (type(e), e)
+    continue
+
+
+  ## Store data
   cnt_url += 1
   if cnt_url % 10 == 0:
     store_output_files()
 
-  print "    # host in pools: %d" %(len(url_pool))
-  print "    # url in pools: %d" % (num)
-  print "    # hostnames: %d" % (len(hostnames))
+
+  if DEBUG3:
+    print "    # host in pools: %d" %(len(url_pool))
+    print "    # url in pools: %d" % (num)
+    print "    # hostnames: %d" % (len(hostnames))
+
   time.sleep(0.2)
+
 
 store_output_files()
 os.system("touch %s" % (DONE_IND_FILE))
 os.system("rm %s" % (RUNNING_IND_FILE))
+

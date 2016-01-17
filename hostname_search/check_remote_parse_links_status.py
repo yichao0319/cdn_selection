@@ -1,9 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 import sys, os, math, re, fnmatch, signal, time, locale
 import list_data
-import data
 
 
 ## static variables
@@ -17,8 +15,18 @@ DEBUG3 = 1
 ###################
 username = 'cuhk_cse_02'
 projname = 'cdn_selection'
-taskname = 'ip_geolocate'
-progname = 'ipinfo'
+taskname = 'hostname_search'
+progname = 'parse_links'
+dirname  = 'hostname'
+
+plnode_dir    = '../../data/' + taskname + '/plnode/'
+hosts_dir     = '../../data/' + taskname + '/' + dirname + '/'
+output_dir    = '../../data/' + taskname + '/tmp_deploy/'
+
+deploy_node_filename = 'nodes-current-deploy.txt'
+ready_node_filename  = 'nodes-current-deploy-ready.txt'
+hostname_filename    = 'hostnames.txt'
+entrance_filename    = 'entrances.txt'
 
 DONE_IND_FILE    = 'tmp.' + progname + '.done'
 KILLED_IND_FILE  = 'tmp.' + progname + '.killed'
@@ -26,23 +34,10 @@ RUNNING_IND_FILE = 'tmp.' + progname + '.running'
 NOHUP_LOG_FILE   = 'tmp.nohup.' + progname + '.out'
 PARAM_FILE       = 'tmp.' + progname + '.param.txt'
 
-plnode_dir    = '../../data/' + taskname + '/plnode/'
-geo_db_dir    = '../../data/' + taskname + '/database/'
-ips_dir       = '../../data/ip_search/ips/'
-output_dir    = '../../data/' + taskname + '/tmp_run/'
-
-deploy_node_filename = 'nodes-current-deploy.txt'
-ready_node_filename  = 'nodes-current-deploy-ready.txt'
-
-ip_dict_filename     = 'ips.data'
-ipinfo_db_filename   = 'ipinfo_db.data'
-
 IF_DATA_READ = 0
+wait_time = 90
 
-time_cnt = 0
-wait_time = 10
-
-located_ips = {}
+hostnames = set()
 
 
 def force_utf8_hack():
@@ -61,14 +56,10 @@ def force_utf8_hack():
         os.environ[attr] = lang + '.UTF-8'
 
 
-def merge_located_ips(ips1, ips2):
-  for ip in ips2:
-    if ip not in ips1:
-      ips1[ip] = ips2[ip]
-  return ips1
-
 def store_output_files():
-  data.store_data(geo_db_dir + ipinfo_db_filename, located_ips)
+  # print "Store!"
+  hostnames.update(set(list_data.load_data(hosts_dir + hostname_filename)))
+  list_data.store_data(hosts_dir + hostname_filename, list(hostnames))
 
 
 # handle crl+c event
@@ -78,7 +69,12 @@ def signal_handler(signal, frame):
     store_output_files()
   sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+
+
+## handle unresponsive nodes
+def timeout_handler(signum, frame):
+  raise Exception("end of time")
+signal.signal(signal.SIGALRM, timeout_handler)
 
 
 ###################
@@ -92,27 +88,29 @@ signal.signal(signal.SIGTERM, signal_handler)
 ###################
 force_utf8_hack()
 
+
 ###################
 ## get PlanetLab nodes states
 ###################
 if DEBUG2: print "Get PlanetLab Nodes"
 
 nodes = list_data.load_data(plnode_dir + deploy_node_filename)
+if DEBUG3: print "  %d nodes" % (len(nodes))
 
 
 ###################
-## Read IP to Geolocation Database
+## Get Hostname
 ###################
-if DEBUG2: print "Read IP to Geolocation Database"
+if DEBUG2: print "Get Existing Hostname"
 
-located_ips = data.load_data(geo_db_dir + ipinfo_db_filename)
+hostnames = set(list_data.load_data(hosts_dir + hostname_filename))
+if DEBUG3: print "  %d hostnames" % (len(list(hostnames)))
+
 IF_DATA_READ = 1
 
-if DEBUG3: print "  #records=%d" % (len(located_ips))
-
 
 ###################
-## Check Remote IPs -- Prepare Tmp Directory
+## Check Remote Status -- Prepare Tmp Directory
 ###################
 if DEBUG2: print "Prepare Tmp Directory"
 
@@ -137,7 +135,7 @@ if DEBUG2: print "Copy Remote Output Files"
 
 ## host names
 os.system("rm -rf " + output_dir)
-os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/data/%s/database ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t %d -P 100 scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/data/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, dirname))
 ## job done indicator
 os.system("rm -rf " + output_dir)
 os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, DONE_IND_FILE))
@@ -170,18 +168,15 @@ for ni in xrange(0,len(nodes)):
   else:
     nodes_ready.append(node)
 
-  ## read files
-  this_located_ips = data.load_data(tmp_dir + "/database/" + ipinfo_db_filename)
-  if DEBUG3:
-    print "  before=%d" % (len(located_ips))
-    print "  add   =%d" % (len(this_located_ips))
+  ## get existing hostnames
+  if os.path.exists("%s/%s/" % (tmp_dir, dirname)):
+    if DEBUG3: print "    Update hostnames: %d" % (len(list(hostnames)))
+    new_hostnames = set(list_data.load_data("%s/%s/%s" % (tmp_dir, dirname, hostname_filename)))
+    hostnames.update(new_hostnames)
+    if DEBUG3: print "               after: %d" % (len(list(hostnames)))
 
-  if len(this_located_ips) > 2:
-    located_ips = merge_located_ips(located_ips, this_located_ips)
-
-  if DEBUG3:
-    print "  after=%d" % (len(located_ips))
-
+  else:
+    continue
 
   ## remove tmp_dir
   os.system("rm -rf %s" % (tmp_dir))
@@ -195,12 +190,11 @@ if DEBUG3:
   print "    "+"\n    ".join(nodes_running)
   print "  Bad Nodes: "
   print "    "+"\n    ".join(nodes_bad)
-  print "  #records=%d" % (len(located_ips))
-
+  print "  # Crawlled Hostnames: %d" % (len(list(hostnames)))
+  # print "    "+"\n    ".join(list(hostnames))
 
 ## Update local files
 store_output_files()
-if len(nodes_ready) > 0:
-  list_data.store_data(plnode_dir + ready_node_filename, nodes_ready)
+list_data.store_data(plnode_dir + ready_node_filename, nodes_ready)
 
 

@@ -1,5 +1,6 @@
 #!/usr/bin/python
-import sys, os, math, re, fnmatch, signal, time
+# -*- coding: utf-8 -*-
+import sys, os, math, re, fnmatch, signal, time, locale
 import list_data
 import data
 
@@ -17,6 +18,7 @@ username = 'cuhk_cse_02'
 projname = 'cdn_selection'
 taskname = 'dns_cname_search'
 progname = 'dns_cname_search'
+dirname  = 'dns_cname'
 
 DONE_IND_FILE    = 'tmp.' + progname + '.done'
 KILLED_IND_FILE  = 'tmp.' + progname + '.killed'
@@ -26,7 +28,7 @@ PARAM_FILE       = 'tmp.' + progname + '.param.txt'
 
 plnode_dir    = '../../data/' + taskname + '/plnode/'
 hostname_dir  = '../../data/hostname_search/hostname/'
-cname_dir     = '../../data/' + taskname + '/dns_cname/'
+cname_dir     = '../../data/' + taskname + '/' + dirname + '/'
 output_dir    = '../../data/' + taskname + '/tmp_run/'
 
 hostname_filename    = 'hostnames.txt'
@@ -47,6 +49,22 @@ IF_DATA_READ = 0
 wait_time = 100
 
 
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
 def store_output_files():
   data.store_data(cname_dir + cname_dict_filename, cnames)
   data.store_data(cname_dir + auth_dict_filename, auths)
@@ -56,6 +74,7 @@ def store_output_files():
   data.store_data(cname_dir + fail_auth_dict_filename, fail_auths)
   list_data.store_data(cname_dir + fail_cname_filename, list(fail_cname_list))
   list_data.store_data(cname_dir + fail_auth_filename, list(fail_auth_list))
+
 
 # handle crl+c event
 def signal_handler(signal, frame):
@@ -81,6 +100,8 @@ signal.signal(signal.SIGALRM, timeout_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
+
 
 ###################
 ## get PlanetLab nodes states
@@ -88,6 +109,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 if DEBUG2: print "Get PlanetLab Nodes"
 
 nodes = list_data.load_data(plnode_dir + deploy_node_filename)
+if DEBUG3: print "  %d nodes" % (len(nodes))
 
 
 ###################
@@ -129,20 +151,20 @@ for ni in xrange(0,len(nodes)):
 ###################
 ## Copy remote output files
 ###################
-if DEBUG2: print "Copy Remote Output Files"  
+if DEBUG2: print "Copy Remote Output Files"
 
 ## host names
 os.system("rm -rf " + output_dir)
-os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/data/%s/dns_cname ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t %d -P 100 scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/data/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, dirname))
 ## job done indicator
 os.system("rm -rf " + output_dir)
-os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, DONE_IND_FILE))
+os.system("python vxargs.py -a %s%s -o %s -t %d -P 100 scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, DONE_IND_FILE))
 ## job running indicator
 os.system("rm -rf " + output_dir)
-os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, RUNNING_IND_FILE))
+os.system("python vxargs.py -a %s%s -o %s -t %d -P 100 scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, RUNNING_IND_FILE))
 ## job killed indicator
 os.system("rm -rf " + output_dir)
-os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, KILLED_IND_FILE))
+os.system("python vxargs.py -a %s%s -o %s -t %d -P 100 scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, KILLED_IND_FILE))
 ## remove output_dir
 os.system("rm -rf " + output_dir)
 
@@ -167,15 +189,15 @@ for ni in xrange(0,len(nodes)):
     nodes_ready.append(node)
 
   ## read files
-  this_cnames = data.load_data(tmp_dir + "/dns_cname/" + cname_dict_filename)
-  this_auths  = data.load_data(tmp_dir + "/dns_cname/" + auth_dict_filename)
-  this_cname_list = set(list_data.load_data(tmp_dir + "/dns_cname/" + cname_filename))
-  this_auth_list  = set(list_data.load_data(tmp_dir + "/dns_cname/" + auth_filename))
-  this_fail_cnames = data.load_data(tmp_dir + "/dns_cname/" + fail_cname_dict_filename)
-  this_fail_auths  = data.load_data(tmp_dir + "/dns_cname/" + fail_auth_dict_filename)
-  this_fail_cname_list = set(list_data.load_data(tmp_dir + "/dns_cname/" + fail_cname_filename))
-  this_fail_auth_list  = set(list_data.load_data(tmp_dir + "/dns_cname/" + fail_auth_filename))
-  
+  this_cnames = data.load_data(tmp_dir + "/" + dirname + "/" + cname_dict_filename)
+  this_auths  = data.load_data(tmp_dir + "/" + dirname + "/" + auth_dict_filename)
+  this_cname_list = set(list_data.load_data(tmp_dir + "/" + dirname + "/" + cname_filename))
+  this_auth_list  = set(list_data.load_data(tmp_dir + "/" + dirname + "/" + auth_filename))
+  this_fail_cnames = data.load_data(tmp_dir + "/" + dirname + "/" + fail_cname_dict_filename)
+  this_fail_auths  = data.load_data(tmp_dir + "/" + dirname + "/" + fail_auth_dict_filename)
+  this_fail_cname_list = set(list_data.load_data(tmp_dir + "/" + dirname + "/" + fail_cname_filename))
+  this_fail_auth_list  = set(list_data.load_data(tmp_dir + "/" + dirname + "/" + fail_auth_filename))
+
   ## add to cnames
   for hostname in this_cnames:
     if hostname in cnames:
@@ -184,7 +206,7 @@ for ni in xrange(0,len(nodes)):
       cnames[hostname] = this_cnames[hostname]
 
   cname_list.update(this_cname_list)
-  
+
   ## add to done auths
   for hostname in this_auths:
     if hostname in auths:
@@ -194,6 +216,9 @@ for ni in xrange(0,len(nodes)):
 
   auth_list.update(this_auth_list)
 
+  print "    # CNAMEs: %d (+%d)" % (len(cnames), len(this_cnames))
+  print "    # DNSes:  %d (+%d)" % (len(auths), len(this_auths))
+
   ## add to failed cnames
   for hostname in this_fail_cnames:
     if hostname in fail_cnames:
@@ -202,7 +227,7 @@ for ni in xrange(0,len(nodes)):
       fail_cnames[hostname] = this_fail_cnames[hostname]
 
   fail_cname_list.update(this_fail_cname_list)
-  
+
   ## add to failed auths
   for hostname in this_fail_auths:
     if hostname in fail_auths:
@@ -217,6 +242,12 @@ for ni in xrange(0,len(nodes)):
   time.sleep(0.1)
 
 
+## Update local files
+store_output_files()
+if len(nodes_ready) > 0:
+  list_data.store_data(plnode_dir + ready_node_filename, nodes_ready)
+
+
 if DEBUG3:
   print "  Ready Nodes: "
   print "    "+"\n    ".join(nodes_ready)
@@ -224,11 +255,8 @@ if DEBUG3:
   print "    "+"\n    ".join(nodes_running)
   print "  Bad Nodes: "
   print "    "+"\n    ".join(nodes_bad)
-  
-
-## Update local files
-store_output_files()
-if len(nodes_ready) > 0:
-  list_data.store_data(plnode_dir + ready_node_filename, nodes_ready)
-
+  print "  # Hostnames: %d" % (len(cnames))
+  print "  # CNAMEs: %d" % (len(cname_list))
+  print "  # Domains:  %d" % (len(auths))
+  print "  # DNSes:  %d" % (len(auth_list))
 

@@ -44,6 +44,22 @@ geo = {}
 located_ips = {}
 
 
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
 def merge_geo_data(geo1, geo2):
   for provider in geo2:
     if provider in geo1:
@@ -68,7 +84,7 @@ def geo_dict_to_csv(geo):
   for provider in geo:
     for ip in geo[provider]:
       addr = parse_ipinfo_data(geo[provider][ip])
-      
+
       geo_list.append(("%s,%s,%s,%s %s %s,%s,%s" % (provider, ip, addr['loc'], addr['city'], addr['region'], addr['country'], addr['as'], addr['isp'])).encode('utf-8'))
   return geo_list
 
@@ -84,7 +100,7 @@ def parse_ipinfo_data(record):
 
     if p == "city" and ret[p] == "" and 'country' in record:
       ret[p] = record['country']
-    
+
     # if ret[p] == '' and p == "country":
     #   print p
     #   print record
@@ -121,6 +137,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 
 ###################
 ## read ips
@@ -163,7 +180,7 @@ for target in cdns:
 
     for dns in ips[cdn]:
       for ip in ips[cdn][dns]:
-        
+
         found = -1
         if ip not in located_ips:
           found = 100
@@ -179,12 +196,12 @@ for target in cdns:
 
             if found <= 0:
               num_unknown_ip += 1
-        
+
         if found == 0:
           continue
-        
+
         address = parse_ipinfo_data(located_ips[ip])
-          
+
         this_geo = {target: {ip: address}}
         merge_geo_data(geo, this_geo)
 

@@ -1,5 +1,7 @@
 #!/usr/bin/python
-import sys, os, math, re, fnmatch, signal, time
+# -*- coding: utf-8 -*-
+
+import sys, os, math, re, fnmatch, signal, time, locale
 import list_data
 import data
 
@@ -40,10 +42,26 @@ bad_dns_filename = 'invalid_auth_dns.txt'
 IF_DATA_READ = 0
 
 time_cnt = 0
-wait_time = 10
+wait_time = 60
 
 valid_dns = set()
 invalid_dns = set()
+
+
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
 
 
 def store_output_files():
@@ -75,6 +93,8 @@ signal.signal(signal.SIGALRM, timeout_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
+
 
 ###################
 ## get PlanetLab nodes states
@@ -119,7 +139,7 @@ for ni in xrange(0,len(nodes)):
 ###################
 ## Copy remote output files
 ###################
-if DEBUG2: print "Copy Remote Output Files"  
+if DEBUG2: print "Copy Remote Output Files"
 
 ## host names
 os.system("rm -rf " + output_dir)
@@ -161,6 +181,9 @@ for ni in xrange(0,len(nodes)):
   valid_dns.update(this_valid_dns)
   this_invalid_dns = set(list_data.load_data(tmp_dir + "/dns/" + bad_dns_filename))
   invalid_dns.update(this_invalid_dns)
+
+  print "  #valid dns: %d (+%d)" % (len(valid_dns), len(this_valid_dns))
+  print "  #invalid dns: %d (+%d)" % (len(invalid_dns), len(this_invalid_dns))
 
   ## remove tmp_dir
   os.system("rm -rf %s" % (tmp_dir))

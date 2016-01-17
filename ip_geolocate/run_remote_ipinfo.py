@@ -1,5 +1,7 @@
 #!/usr/bin/python
-import sys, os, math, re, fnmatch, signal, time
+# -*- coding: utf-8 -*-
+
+import sys, os, math, re, fnmatch, signal, time, locale
 import list_data
 import data
 
@@ -43,6 +45,23 @@ wait_time = 10
 located_ips = {}
 
 
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
+
 ###################
 ## DEBUG
 # exit()
@@ -52,13 +71,14 @@ located_ips = {}
 ###################
 ## Main
 ###################
+force_utf8_hack()
 
 ###################
 ## get PlanetLab nodes states
 ###################
 if DEBUG2: print "Get PlanetLab Nodes"
 
-if os.path.exists(plnode_dir + ready_node_filename): 
+if os.path.exists(plnode_dir + ready_node_filename):
   filename = plnode_dir + ready_node_filename
 else:
   filename = plnode_dir + deploy_node_filename

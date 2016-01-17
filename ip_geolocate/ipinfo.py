@@ -43,9 +43,26 @@ wait_time = 60
 
 located_ips = {}
 
+
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
 def store_output_files():
   data.store_data(geo_db_dir + ipinfo_db_filename, located_ips)
-  
+
 
 # handle crl+c event
 def signal_handler(signal, frame):
@@ -68,6 +85,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 os.system("rm %s" % (DONE_IND_FILE))
 os.system("rm %s" % (KILLED_IND_FILE))
 os.system("touch %s" % (RUNNING_IND_FILE))
@@ -129,17 +147,17 @@ for ip in remain_ips:
     continue
 
 
-  if DEBUG3: 
+  if DEBUG3:
     if 'loc' in located_ips[ip]:
       print "%d: %s, %s" % (cnt, ip, located_ips[ip]['loc'])
     else:
       print "%d: %s\n    " % (cnt, ip)
       print located_ips[ip]
-  
+
   cnt += 1
   if cnt % 100 == 0:
     store_output_files()
-  
+
 
 store_output_files()
 os.system("touch %s" % (DONE_IND_FILE))

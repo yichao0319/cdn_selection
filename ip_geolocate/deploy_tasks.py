@@ -1,5 +1,7 @@
 #!/usr/bin/python
-import sys, os
+# -*- coding: utf-8 -*-
+
+import sys, os, locale
 from list_data import *
 
 

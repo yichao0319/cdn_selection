@@ -1,5 +1,7 @@
 #!/usr/bin/python
-import sys, os, math, re, fnmatch, signal, time
+# -*- coding: utf-8 -*-
+
+import sys, os, math, re, fnmatch, signal, time, locale
 import list_data
 import data
 
@@ -42,9 +44,25 @@ ip_filename      = 'ips.txt'
 IF_DATA_READ = 0
 
 time_cnt = 0
-wait_time = 10
+wait_time = 90
 
 ips = {}
+
+
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
 
 
 def merge_ips(ips1, ips2):
@@ -61,17 +79,18 @@ def merge_ips(ips1, ips2):
   return ips1
 
 
-def dict_ips_to_list(ips):
+def dict_ips_to_list(ips1):
   ret = []
-  for cname in ips:
-    for dns in ips[cname]:
-      for ip in ips[cname][dns]:
+  for cname in ips1:
+    for dns in ips1[cname]:
+      for ip in ips1[cname][dns]:
         ret.append("%s|%s|%s" % (cname, dns, ip))
 
   return ret
 
 
 def store_output_files():
+  # ips = merge_ips(ips, data.load_data(ips_dir + ip_dict_filename))
   data.store_data(ips_dir + ip_dict_filename, ips)
   ip_list = dict_ips_to_list(ips)
   list_data.store_data(ips_dir + ip_filename, ip_list)
@@ -101,6 +120,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 
 ###################
 ## get PlanetLab nodes states
@@ -108,18 +128,6 @@ signal.signal(signal.SIGALRM, timeout_handler)
 if DEBUG2: print "Get PlanetLab Nodes"
 
 nodes = list_data.load_data(plnode_dir + deploy_node_filename)
-
-
-###################
-## read cname and dns
-###################
-if DEBUG2: print "Read Data"
-
-cnames = list_data.load_data(cname_dir + cname_filename)
-auths  = list_data.load_data(cname_dir + auth_filename)
-
-if DEBUG3: print "  #cnames=%d" % (len(cnames))
-if DEBUG3: print "  #auth dns=%d" % (len(auths))
 
 
 ###################
@@ -131,6 +139,7 @@ ips = data.load_data(ips_dir + ip_dict_filename)
 IF_DATA_READ = 1
 
 if DEBUG3: print "  #cnames=%d" % (len(ips))
+# a = input(' ')
 
 
 ###################
@@ -155,11 +164,11 @@ for ni in xrange(0,len(nodes)):
 ###################
 ## Copy remote output files
 ###################
-if DEBUG2: print "Copy Remote Output Files"  
+if DEBUG2: print "Copy Remote Output Files"
 
 ## host names
 os.system("rm -rf " + output_dir)
-os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/data/%s/ips ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t %d -p scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/data/%s/ips ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname))
 ## job done indicator
 os.system("rm -rf " + output_dir)
 os.system("python vxargs.py -a %s%s -o %s -t %d scp -oBatchMode=yes -oStrictHostKeyChecking=no -i ~/.ssh/planetlab_rsa -r %s@{}:~/%s/git_repository/%s/%s ./tmp.{}/" % (plnode_dir, deploy_node_filename, output_dir, wait_time, username, projname, taskname, DONE_IND_FILE))
@@ -195,8 +204,8 @@ for ni in xrange(0,len(nodes)):
   ## read files
   this_ips = data.load_data(tmp_dir + "/ips/" + ip_dict_filename)
   ips = merge_ips(ips, this_ips)
-  if DEBUG3: print "    #ips: %d, total: %d" % (len(this_ips), len(ips))
-  
+  if DEBUG3: print "    #cnames: %d, total: %d" % (len(this_ips), len(ips))
+
   ## remove tmp_dir
   os.system("rm -rf %s" % (tmp_dir))
   time.sleep(0.1)

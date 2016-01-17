@@ -36,7 +36,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Make Directory for Data"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 10 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"mkdir -p ~/%s/data/%s/dns_cname; mkdir -p ~/%s/data/%s/plnode; mkdir -p ~/%s/git_repository/%s\"" % (plnode_dir, deploy_node_filename, output_dir, username, projname, taskname, projname, taskname, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t 10 -P 100 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"mkdir -p ~/%s/data/%s/dns_cname; mkdir -p ~/%s/data/%s/plnode; mkdir -p ~/%s/git_repository/%s\"" % (plnode_dir, deploy_node_filename, output_dir, username, projname, taskname, projname, taskname, projname, taskname))
 
 
 ###################
@@ -63,7 +63,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Delete Old Codes"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 30 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"rm -rf ~/%s/git_repository/%s\"" % (plnode_dir, deploy_node_filename, output_dir, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t 30 -P 100 ssh -oBatchMode=yes -i ~/.ssh/planetlab_rsa %s@{}  -oStrictHostKeyChecking=no \"rm -rf ~/%s/git_repository/%s\"" % (plnode_dir, deploy_node_filename, output_dir, username, projname, taskname))
 
 
 ###################
@@ -73,7 +73,7 @@ if DEBUG2: print "\n========================="
 if DEBUG2: print "Copy New Codes"
 
 os.system("rm -rf %s" % (output_dir))
-os.system("python vxargs.py -a %s%s -o %s -t 30 scp -oBatchMode=yes -i ~/.ssh/planetlab_rsa -r ../%s %s@{}:~/%s/git_repository/%s" % (plnode_dir, deploy_node_filename, output_dir, taskname, username, projname, taskname))
+os.system("python vxargs.py -a %s%s -o %s -t 30 -P 100 scp -oBatchMode=yes -i ~/.ssh/planetlab_rsa -r ../%s %s@{}:~/%s/git_repository/%s" % (plnode_dir, deploy_node_filename, output_dir, taskname, username, projname, taskname))
 
 
 ###################

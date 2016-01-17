@@ -51,6 +51,23 @@ valid_dns = set()
 invalid_dns = set()
 
 
+
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
 def store_output_files():
   list_data.store_data(dns_dir + dns_filename, list(valid_dns))
   list_data.store_data(dns_dir + bad_dns_filename, list(invalid_dns))
@@ -84,7 +101,7 @@ def send_query_to_ns(hostname, nameserver):
       for rr in rrset:
         if rr.rdtype == dns.rdatatype.A:
           if DEBUG4: print "  Name = %s" % (rr.address)
-          
+
           ret.add(rr.address)
 
         elif rr.rdtype == dns.rdatatype.CNAME:
@@ -115,6 +132,7 @@ signal.signal(signal.SIGINT, signal_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 os.system("rm %s" % (DONE_IND_FILE))
 os.system("rm %s" % (KILLED_IND_FILE))
 os.system("touch %s" % (RUNNING_IND_FILE))
@@ -193,7 +211,7 @@ for auth in auths:
 
     # except dns.exception.Timeout as e:
     #   if DEBUG2: print "    [1] query CNAME Timeout"
-      
+
     except Exception as e:
       invalid_dns.add(auth)
 

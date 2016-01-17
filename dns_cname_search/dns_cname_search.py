@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 import sys, os, signal, random, re, fnmatch
 import time, locale, datetime
 import socket
@@ -51,11 +50,27 @@ fail_auth_list  = set()
 wait_time = 15
 
 
+def force_utf8_hack():
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
+  for attr in dir(locale):
+    if attr[0:3] != 'LC_':
+      continue
+    aref = getattr(locale, attr)
+    locale.setlocale(aref, '')
+    (lang, enc) = locale.getlocale(aref)
+    if lang != None:
+      try:
+        locale.setlocale(aref, (lang, 'UTF-8'))
+      except:
+        os.environ[attr] = lang + '.UTF-8'
+
+
 def get_ip(domain):
   ret = set()
   answers = dns.resolver.query(hostname, "A")
   if DEBUG4: print '  query name:', answers.qname, ' for A, num ans. =', len(answers)
-  
+
   for rdata in answers:
     if DEBUG4: print '    target address:', rdata.address
     ret.add(rdata.address)
@@ -71,7 +86,7 @@ def get_cname1(domain):
     if DEBUG4: print '    target address:', rdata.target
     ret.add(rdata.target.to_text())
   return ret
-  
+
 
 def get_cname2(domain):
   ret = set()
@@ -84,7 +99,7 @@ def get_cname2(domain):
   query = dns.message.make_query(domain, dns.rdatatype.CNAME)
   response = dns.query.udp(query, nameserver) ## response is of type: dns.message.Message
 
-  ## check if getting error 
+  ## check if getting error
   rcode = response.rcode()
   if rcode != dns.rcode.NOERROR:
     if DEBUG3: print "    error %s: %s" % (rcode, domain)
@@ -113,7 +128,7 @@ def get_cname2(domain):
 def get_authoritative_nameserver(domain):
   ret = dict()
   n = dns.name.from_text(domain)
-  
+
   ## find default DNS server
   default = dns.resolver.get_default_resolver()
   nameserver = default.nameservers[0]
@@ -152,7 +167,7 @@ def get_authoritative_nameserver(domain):
 
     # Handle all RRsets, not just the first one
     for rrset in rrsets:
-      for rr in rrset:  
+      for rr in rrset:
         ## rr = an RRset is a named rdataset,
         ##      an rdataset is a set of rdatas of a given type and class
         if rr.rdtype == dns.rdatatype.SOA:
@@ -162,11 +177,11 @@ def get_authoritative_nameserver(domain):
             ret[sub].add(sub)
           else:
             ret[sub] = set([sub])
-        
+
         elif rr.rdtype == dns.rdatatype.A:
           ns = rr.items[0].address
           if DEBUG4: print('    Glue record for %s: %s' % (rr.name, ns))
-        
+
         elif rr.rdtype == dns.rdatatype.NS:
           authority = rr.target
           # ns = default.query(authority).rrset[0].to_text()
@@ -218,9 +233,11 @@ signal.signal(signal.SIGALRM, timeout_handler)
 ###################
 ## Main
 ###################
+force_utf8_hack()
 os.system("rm %s" % (DONE_IND_FILE))
 os.system("rm %s" % (KILLED_IND_FILE))
 os.system("touch %s" % (RUNNING_IND_FILE))
+
 
 ###################
 ## Load hostnames and done search
@@ -229,7 +246,7 @@ if DEBUG2: print "Load Hostnames and Done Search"
 
 if os.path.exists(PARAM_FILE):
   filename = PARAM_FILE
-elif os.path.exists(hostname_dir + hostname_filename): 
+elif os.path.exists(hostname_dir + hostname_filename):
   filename = hostname_dir + hostname_filename
 else:
   print "no input parameter: " + PARAM_FILE
